@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise Attendance Intel Pro (Final)</title>
+    <!-- Portable Setup: All Styles and Scripts are loaded via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --navy: #0F172A; --brand: #4F46E5; --emerald: #10B981; --rose: #EF4444; }
+        body { font-family: 'Plus Jakarta Sans', 'Sarabun', sans-serif; background-color: #F8FAFC; color: #1E293B; }
+        .enterprise-card { background: white; border: 1px solid #E2E8F0; border-radius: 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); transition: all 0.3s ease; }
+        .enterprise-card:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05); }
+        .main-table thead th { position: sticky; top: 0; background: #F8FAFC; z-index: 20; border-bottom: 2px solid #E2E8F0; padding: 1.25rem 1rem; }
+        .filter-btn { transition: all 0.2s; border: 1px solid #E2E8F0; cursor: pointer; }
+        .filter-btn.active { background-color: var(--navy); color: white; border-color: var(--navy); box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.2); }
+        .progress-fill { transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+        .tab-btn { border-bottom: 3px solid transparent; transition: all 0.3s; padding: 1rem 1.5rem; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; cursor: pointer; }
+        .tab-btn.active { border-bottom-color: var(--brand); color: var(--brand); font-weight: 800; }
+        .fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="antialiased min-h-screen">
+
+    <!-- Header Navigation -->
+    <nav class="bg-white border-b border-slate-200 sticky top-0 z-[100] px-8 py-5 shadow-sm">
+        <div class="max-w-[1600px] mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="flex items-center gap-5 text-slate-800">
+                <div class="bg-indigo-600 p-3 rounded-2xl text-white shadow-xl shadow-indigo-100">
+                    <i data-lucide="shield-check" class="w-7 h-7"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-extrabold tracking-tight text-slate-900 leading-none uppercase italic text-slate-800">Audit <span class="text-indigo-600 font-black not-italic">Intel</span></h1>
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.25em] mt-1.5 leading-none">Enterprise Personnel Integrity v8.5</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-4 w-full md:w-auto">
+                <div id="status-tag" class="hidden md:flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-xl mr-2 text-slate-800">
+                    <div class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
+                    <span class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest leading-none">Dataset Active</span>
+                </div>
+                <label for="csv-upload" class="flex-1 md:flex-none flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3.5 rounded-2xl text-xs font-black cursor-pointer transition-all active:scale-95 shadow-xl shadow-indigo-100 uppercase tracking-widest">
+                    <i data-lucide="upload-cloud" class="w-4 h-4 text-white"></i> Import dataset
+                </label>
+                <input type="file" id="csv-upload" class="hidden" accept=".csv">
+                <button onclick="window.location.reload()" class="p-3.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 bg-white border border-slate-200 rounded-2xl transition-all shadow-sm">
+                    <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-[1600px] mx-auto px-8 py-10">
+        <!-- Empty State -->
+        <div id="empty-state" class="flex flex-col items-center justify-center py-40 bg-white rounded-[3.5rem] border border-slate-200 shadow-sm border-dashed text-slate-800">
+            <div class="bg-slate-50 p-12 rounded-full mb-8 relative text-slate-800">
+                <div class="absolute inset-0 bg-blue-100 rounded-full blur-3xl opacity-30 animate-pulse"></div>
+                <i data-lucide="database" class="relative text-slate-300 w-24 h-24"></i>
+            </div>
+            <h2 class="text-3xl font-extrabold text-slate-800 mb-2 tracking-tight uppercase text-center">Analyze Records</h2>
+            <p class="text-slate-400 max-w-sm text-center font-medium leading-relaxed italic uppercase tracking-tighter">Please import your CSV file. Version 8.5 fixes Station Filter (Col L) and Date Analysis (1-11 Dec).</p>
+        </div>
+
+        <!-- Dashboard Content -->
+        <div id="dashboard-content" class="hidden fade-in text-slate-800">
+            <!-- KPI Summary Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-10 text-slate-800 font-sans">
+                <div class="enterprise-card p-6 flex flex-col justify-between border-l-4 border-l-indigo-500">
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Personnel</p>
+                    <div id="kpi-total" class="text-3xl font-extrabold text-slate-900 tracking-tighter font-mono text-indigo-600">0</div>
+                    <p class="text-[9px] font-bold text-indigo-500 mt-2 uppercase tracking-tighter">Monitored Headcount</p>
+                </div>
+                <div class="enterprise-card p-6 flex flex-col justify-between border-l-4 border-l-rose-400">
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 text-rose-500">Incomplete</p>
+                    <div id="kpi-missing" class="text-3xl font-extrabold text-rose-500 tracking-tighter font-mono">0</div>
+                    <p class="text-[9px] font-bold text-rose-400 mt-2 uppercase tracking-tighter">Missing Scans</p>
+                </div>
+                <div class="enterprise-card p-6 flex flex-col justify-between border-l-4 border-l-rose-600">
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 text-rose-700">Lost Both</p>
+                    <div id="kpi-lost" class="text-3xl font-extrabold text-rose-700 tracking-tighter font-mono">0</div>
+                    <p class="text-[9px] font-bold text-rose-600 mt-2 uppercase tracking-tighter">Critical Risk</p>
+                </div>
+                <div class="enterprise-card p-6 flex flex-col justify-between border-l-4 border-l-amber-500">
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 text-amber-600">Late Entries</p>
+                    <div id="kpi-late" class="text-3xl font-extrabold text-amber-500 tracking-tighter font-mono">0</div>
+                    <p class="text-[9px] font-bold text-amber-500/60 mt-2 uppercase tracking-tighter">Time Deficit</p>
+                </div>
+                <div class="bg-slate-900 p-6 rounded-[1.5rem] shadow-2xl flex flex-col justify-between text-white border-l-4 border-l-emerald-500">
+                    <p class="text-[10px] font-black text-white/40 uppercase tracking-widest mb-2">Integrity Score</p>
+                    <div id="kpi-rate" class="text-3xl font-extrabold tracking-tighter font-mono text-emerald-400">0%</div>
+                    <p class="text-[9px] font-bold text-white/30 mt-2 uppercase tracking-tighter">Global Compliance</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-4 gap-8">
+                <!-- Sidebar -->
+                <aside class="xl:col-span-1 space-y-6">
+                    <div class="enterprise-card p-8 shadow-sm sticky top-32">
+                        <div class="flex items-center justify-between mb-8 pb-4 border-b border-slate-50 text-slate-800">
+                            <h3 class="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                <i data-lucide="sliders" class="w-4 h-4 text-indigo-600"></i> Control Panel
+                            </h3>
+                        </div>
+                        
+                        <div class="space-y-8 text-slate-800">
+                            <div>
+                                <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-1 tracking-widest leading-none">Search Personnel</label>
+                                <div class="relative mt-2">
+                                    <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4"></i>
+                                    <input type="text" id="filter-search" placeholder="Enter Name or ID..." class="w-full pl-11 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition-all shadow-inner text-slate-700">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="text-[10px] font-extrabold text-slate-400 uppercase ml-1 tracking-widest italic text-indigo-600">Station Filter (Col L)</label>
+                                <div class="relative mt-2">
+                                    <select id="filter-station" class="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none appearance-none cursor-pointer hover:bg-slate-100 transition-all text-slate-700 shadow-inner font-black uppercase">
+                                        <option value="All">All Stations</option>
+                                    </select>
+                                    <i data-lucide="map-pin" class="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4 pointer-events-none group-hover:text-indigo-500 transition-colors"></i>
+                                </div>
+                            </div>
+
+                            <div class="space-y-3 pt-4 border-t border-slate-50">
+                                <label class="text-[10px] font-black text-slate-400 uppercase ml-1 flex items-center gap-2 tracking-widest">
+                                    <i data-lucide="calendar" class="w-3.5 h-3.5 text-indigo-400"></i> Audit Window
+                                </label>
+                                <div class="space-y-2 mt-1">
+                                    <input type="date" id="filter-start-date" class="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none text-slate-600 shadow-inner">
+                                    <input type="date" id="filter-end-date" class="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none text-slate-600 shadow-inner">
+                                </div>
+                            </div>
+
+                            <div class="space-y-3 pt-4 border-t border-slate-50 text-slate-800">
+                                <label class="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-widest">Compliance Group</label>
+                                <div class="grid grid-cols-1 gap-2 mt-2">
+                                    <button onclick="setAuditFilterGroup('All')" id="btn-all" class="filter-btn active w-full text-left px-5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all">Show All Personnel</button>
+                                    <button onclick="setAuditFilterGroup('Incomplete')" id="btn-missing" class="filter-btn w-full text-left px-5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all bg-white text-slate-400 hover:bg-slate-50">Incomplete Only</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- Tables -->
+                <div class="xl:col-span-3 text-slate-800">
+                    <div class="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[700px]">
+                        <div class="px-10 py-4 border-b border-slate-100 bg-white flex items-center gap-8">
+                            <button onclick="changeViewTab('audit')" id="tab-audit" class="tab-btn active px-4 py-4 text-xs font-extrabold uppercase tracking-widest transition-all text-slate-800">Audit Summary</button>
+                            <button onclick="changeViewTab('logs')" id="tab-logs" class="tab-btn px-4 py-4 text-xs font-extrabold uppercase tracking-widest transition-all text-slate-800">Engine Trace</button>
+                        </div>
+
+                        <!-- Tab: Audit Summary -->
+                        <div id="pane-audit" class="flex-1 flex flex-col">
+                            <div class="px-10 py-6 border-b border-slate-50 flex flex-col md:flex-row justify-between items-center bg-white gap-6">
+                                <div id="result-count" class="bg-slate-900 text-white px-4 py-1.5 rounded-xl text-[10px] font-black tracking-widest uppercase italic font-mono">0 Records Found</div>
+                                <div class="flex items-center gap-3">
+                                    <button onclick="moveTablePage(-1)" class="p-3 rounded-2xl border border-slate-200 hover:bg-slate-50 active:scale-90 text-slate-400 transition-all"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
+                                    <div class="bg-slate-50 px-6 py-3 rounded-2xl font-mono text-[10px] font-black text-slate-500 uppercase tracking-widest" id="page-indicator">PAGE 1 / 1</div>
+                                    <button onclick="moveTablePage(1)" class="p-3 rounded-2xl border border-slate-200 hover:bg-slate-50 active:scale-90 text-slate-400 transition-all"><i data-lucide="chevron-right" class="w-5 h-5"></i></button>
+                                </div>
+                            </div>
+                            <div class="overflow-x-auto custom-scroll">
+                                <table class="main-table w-full text-left border-separate border-spacing-0">
+                                    <thead>
+                                        <tr class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] bg-slate-50/50">
+                                            <th class="px-10 py-6 border-b border-slate-100">Staff Identity</th>
+                                            <th class="px-6 py-6 border-b border-slate-100 text-center">Late</th>
+                                            <th class="px-6 py-6 border-b border-slate-100 text-center">In/Out Deficit</th>
+                                            <th class="px-6 py-6 border-b border-slate-100 text-center text-rose-500">Lost Both</th>
+                                            <th class="px-10 py-6 border-b border-slate-100 text-right">Compliance Score</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="audit-table-body" class="divide-y divide-slate-50 bg-white"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Tab: Verification Engine -->
+                        <div id="pane-logs" class="hidden flex-1 flex flex-col p-10 bg-white">
+                             <div class="mb-6 flex justify-between items-center text-slate-800">
+                                 <div>
+                                    <h3 class="text-sm font-black uppercase tracking-widest text-slate-800 italic">Day-by-Day Logic Trace</h3>
+                                    <p class="text-[10px] text-slate-400 font-medium mt-1 uppercase italic tracking-tighter font-mono">Full pairing trace including night shift look-ahead and Col L mapping.</p>
+                                 </div>
+                             </div>
+                             <div class="overflow-auto custom-scroll max-h-[600px] border border-slate-100 rounded-3xl shadow-inner">
+                                <table class="w-full text-left text-[11px] text-slate-800 bg-white">
+                                    <thead class="bg-slate-50 sticky top-0 font-bold uppercase tracking-tighter text-slate-400 border-b border-slate-100 z-10 text-slate-800 font-black">
+                                        <tr>
+                                            <th class="px-4 py-4">Work Date</th>
+                                            <th class="px-4 py-4">Identity</th>
+                                            <th class="px-4 py-4">Station (L)</th>
+                                            <th class="px-4 py-4 text-center">Clock In</th>
+                                            <th class="px-4 py-4 text-center">Clock Out</th>
+                                            <th class="px-4 py-4 text-center">Verdict</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="logs-table-body" class="divide-y divide-slate-50 bg-white text-slate-800"></tbody>
+                                </table>
+                             </div>
+                        </div>
+
+                        <div id="no-data-msg" class="hidden flex flex-col items-center justify-center py-48 bg-white text-slate-800">
+                            <i data-lucide="search-x" class="text-slate-200 w-20 h-20 mb-4 animate-bounce"></i>
+                            <p class="text-slate-300 uppercase font-black tracking-[0.3em] text-sm italic uppercase tracking-tighter font-mono">Empty Query Results</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // --- Core Application State ---
+        let globalProcessedData = [];
+        let globalAuditFilter = 'All';
+        let globalActiveTab = 'audit';
+        let globalCurrentPage = 1;
+        const globalLimitItems = 15;
+
+        const monthsLookup = {
+            jan:0, january:0, feb:1, february:1, mar:2, march:2, apr:3, april:3,
+            may:4, jun:5, june:5, jul:6, july:6, aug:7, august:7, sep:8, september:8,
+            oct:9, october:9, nov:10, november:10, dec:11, december:11
+        };
+
+        // --- Core Utility Functions ---
+        function parseCSVDateString(str) {
+            if (!str) return null;
+            const cleanStr = str.replace(/[^\x20-\x7E\s]/g, '').trim();
+            const pts = cleanStr.split(/\s+/);
+            if (pts.length < 3) return null;
+            const day = parseInt(pts[0]);
+            const month = monthsLookup[pts[1].toLowerCase()];
+            const year = parseInt(pts[2]);
+            if (isNaN(day) || month === undefined || isNaN(year)) return null;
+            return new Date(year, month, day, 12, 0, 0); 
+        }
+
+        function toLocalDateObj(input) { 
+            if (!input) return null;
+            const [y, m, d] = input.split('-').map(Number);
+            return new Date(y, m - 1, d, 12, 0, 0);
+        }
+
+        function checkIsLate(scanIn, rosterIn) {
+            if (!scanIn || !rosterIn || rosterIn.toLowerCase() === 'off') return false;
+            const t2m = (t) => {
+                const parts = t.split(':').map(Number);
+                return (parts[0] * 60) + (parts[1] || 0);
+            };
+            return t2m(scanIn) > t2m(rosterIn);
+        }
+
+        // --- Robust Data Processor Engine ---
+        function runMainEngine(csvText) {
+            const lines = csvText.split(/\r?\n/).filter(l => l.trim() !== "");
+            if (lines.length < 2) return [];
+
+            const h = lines[0].split(',').map(x => x ? x.trim().toLowerCase() : "");
+            const fCol = (keys) => h.findIndex(x => x && keys.some(k => x.includes(k)));
+
+            const col = {
+                id: fCol(['employee number', 'รหัส']),
+                name: fCol(['employee name', 'ชื่อ']),
+                date: fCol(['date', 'วันที่']),
+                rost: fCol(['roster']),
+                rIn: fCol(['roster in']),
+                rOut: fCol(['roster out']),
+                tIn: h.findIndex(x => x && (x.includes('time in') || x.includes('เข้า'))),
+                tOut: h.findIndex(x => x && (x.includes('time out') || x.includes('ออก'))),
+                leave: fCol(['leave', 'ลา']),
+                st: 11 // LOCKED TO COLUMN L AS PRIMARY
+            };
+
+            const extractedRows = lines.slice(1).map(l => {
+                const p = l.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v ? v.trim().replace(/"/g, '') : "");
+                if (!p[col.id]) return null;
+                const dObj = parseCSVDateString(p[col.date]);
+                return {
+                    id: p[col.id], 
+                    name: p[col.name], 
+                    date: p[col.date], 
+                    dObj,
+                    roster: p[col.rost], 
+                    rIn: p[col.rIn], 
+                    tIn: p[col.tIn], 
+                    tOut: p[col.tOut],
+                    leave: p[col.leave], 
+                    st: p[col.st] || 'N/A'
+                };
+            }).filter(r => r && r.dObj);
+
+            const staffGroups = {};
+            extractedRows.forEach(r => { 
+                if(!staffGroups[r.id]) staffGroups[r.id] = []; 
+                staffGroups[r.id].push(r); 
+            });
+
+            const processedLogs = [];
+            Object.values(staffGroups).forEach(rows => {
+                rows.sort((a,b) => a.dObj - b.dObj);
+
+                for (let i = 0; i < rows.length; i++) {
+                    const c = rows[i];
+                    const next = rows[i+1];
+                    
+                    if ((c.roster && c.roster !== "" && c.roster.toLowerCase() !== 'off') || c.tIn) {
+                        let fIn = c.tIn;
+                        let fOut = c.tOut;
+
+                        // Advanced Lookahead Pairing for Night Shift checkout records
+                        if (!fOut && next && (!next.roster || next.roster === "" || next.roster.toLowerCase() === 'off') && next.tOut) {
+                            fOut = next.tOut;
+                        }
+
+                        let status = "COMPLETE";
+                        if (c.leave && c.leave !== "") status = "LEAVE";
+                        else if (!fIn && !fOut) status = "LOST_BOTH";
+                        else if (!fIn) status = "MISSING_IN";
+                        else if (!fOut) status = "MISSING_OUT";
+
+                        processedLogs.push({ 
+                            ...c, tIn: fIn, tOut: fOut, status, 
+                            isLate: fIn && c.rIn ? checkIsLate(fIn, c.rIn) : false 
+                        });
+                    }
+                }
+            });
+            return processedLogs;
+        }
+
+        // --- Main UI Render (Function Names Synced) ---
+        function refreshInterface() {
+            const search = document.getElementById('filter-search')?.value.toLowerCase() || "";
+            const station = document.getElementById('filter-station')?.value || "All";
+            const startLimit = toLocalDateObj(document.getElementById('filter-start-date')?.value);
+            const endLimit = toLocalDateObj(document.getElementById('filter-end-date')?.value);
+
+            const filtered = globalProcessedData.filter(d => {
+                const matchSearch = d.name.toLowerCase().includes(search) || d.id.includes(search);
+                const matchStation = (station === 'All' || d.st === station);
+                let matchDate = true;
+                if (startLimit && d.dObj) matchDate = matchDate && d.dObj >= startLimit;
+                if (endLimit && d.dObj) matchDate = matchDate && d.dObj <= endLimit;
+                return matchSearch && matchStation && matchDate;
+            });
+
+            // Aggregate Summary
+            const individuals = {};
+            filtered.forEach(log => {
+                if (!individuals[log.id]) {
+                    individuals[log.id] = { id: log.id, name: log.name, st: log.st, tot: 0, comp: 0, late: 0, mIn: 0, mOut: 0, lost: 0 };
+                }
+                const s = individuals[log.id];
+                if (log.status !== "LEAVE") {
+                    s.tot++;
+                    if (log.status === "COMPLETE") s.comp++;
+                    if (log.isLate) s.late++;
+                    if (log.status === "MISSING_IN") s.mIn++;
+                    if (log.status === "MISSING_OUT") s.mOut++;
+                    if (log.status === "LOST_BOTH") s.lost++;
+                }
+            });
+
+            let list = Object.values(individuals).map(s => ({
+                ...s, rate: s.tot > 0 ? Math.round((s.comp/s.tot)*100) : 100,
+                perfect: s.tot > 0 && s.comp === s.tot && s.late === 0 && s.lost === 0
+            })).filter(s => globalAuditFilter === 'All' ? true : !s.perfect).sort((a,b) => a.rate - b.rate);
+
+            // Update Header KPIs
+            const updateStat = (id, val) => { if(document.getElementById(id)) document.getElementById(id).innerText = val; };
+            updateStat('kpi-total', list.length);
+            updateStat('kpi-missing', filtered.filter(f => f.status.includes('MISSING') || f.status === 'LOST_BOTH').length);
+            updateStat('kpi-lost', filtered.filter(f => f.status === 'LOST_BOTH').length);
+            updateStat('kpi-late', filtered.filter(f => f.isLate).length);
+            const globalAvg = list.length > 0 ? Math.round(list.reduce((acc, x) => acc + x.rate, 0) / list.length) : 0;
+            updateStat('kpi-rate', globalAvg + '%');
+
+            const auditBody = document.getElementById('audit-table-body');
+            const logsBody = document.getElementById('logs-table-body');
+            const resultMsg = document.getElementById('result-count');
+            const pageInfo = document.getElementById('page-indicator');
+            const emptyMsg = document.getElementById('no-data-msg');
+
+            if (auditBody) {
+                auditBody.innerHTML = '';
+                const startIdx = (globalCurrentPage - 1) * globalLimitItems;
+                const pagedList = list.slice(startIdx, startIdx + globalLimitItems);
+                const totalPages = Math.ceil(list.length/globalLimitItems) || 1;
+                if(pageInfo) pageInfo.innerText = `PAGE ${globalCurrentPage} / ${totalPages}`;
+                if(resultMsg) resultMsg.innerText = `${list.length} ANALYZED RECORDS`;
+
+                if (pagedList.length === 0) {
+                    if(emptyMsg) emptyMsg.classList.remove('hidden');
+                } else {
+                    if(emptyMsg) emptyMsg.classList.add('hidden');
+                    pagedList.forEach(s => {
+                        const tr = document.createElement('tr');
+                        tr.className = "hover:bg-slate-50 transition-all group text-slate-800 font-sans";
+                        tr.innerHTML = `
+                            <td class="px-10 py-6 border-r border-slate-50">
+                                <div class="flex items-center gap-5 text-slate-800">
+                                    <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 font-extrabold text-sm border border-slate-200 group-hover:bg-indigo-600 group-hover:text-white transition-all uppercase italic shadow-sm">${s.name.charAt(0)}</div>
+                                    <div><div class="text-sm font-black uppercase tracking-tight">${s.name}</div><div class="text-[10px] font-bold text-slate-400 mt-0.5 tracking-tighter uppercase font-mono italic opacity-60">ID: ${s.id} • ${s.st}</div></div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-6 text-center"><span class="text-xs font-black ${s.late > 0 ? 'text-amber-600 bg-amber-50 px-3 py-1 rounded-xl border border-amber-100 shadow-sm' : 'text-slate-200'}">${s.late} <span class="text-[8px] opacity-40 uppercase">Tms</span></span></td>
+                            <td class="px-6 py-6 text-center">
+                                <div class="flex items-center justify-center gap-5 text-xs font-black">
+                                    <div class="flex flex-col"><span class="text-[8px] text-slate-300 uppercase tracking-tighter">Miss In</span><span class="${s.mIn > 0 ? 'text-rose-500 font-extrabold' : 'text-slate-100'}">${s.mIn}</span></div>
+                                    <div class="w-px h-6 bg-slate-100"></div>
+                                    <div class="flex flex-col"><span class="text-[8px] text-slate-300 uppercase tracking-tighter">Miss Out</span><span class="${s.mOut > 0 ? 'text-rose-500 font-extrabold' : 'text-slate-100'}">${s.mOut}</span></div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-6 text-center"><span class="text-sm font-black ${s.lost > 0 ? 'text-rose-700 bg-rose-50 px-4 py-1.5 rounded-2xl animate-pulse shadow-inner' : 'text-slate-100'} font-mono">${s.lost}</span></td>
+                            <td class="px-10 py-6 text-slate-800 text-right">
+                                <div class="flex flex-col items-end gap-2 text-slate-800">
+                                    <div class="flex items-baseline gap-2 text-slate-800"><span class="text-sm font-black ${s.rate === 100 ? 'text-emerald-500' : 'text-slate-800'} font-mono">${s.rate}%</span><span class="text-[8px] font-bold text-slate-300 uppercase tracking-widest font-mono italic">Score</span></div>
+                                    <div class="w-32 bg-slate-100 h-2 rounded-full overflow-hidden shadow-inner border border-slate-100"><div class="h-full progress-fill shadow-lg" style="width: ${s.rate}%; background: ${s.perfect ? '#10b981' : s.rate > 70 ? '#F59E0B' : '#EF4444'}"></div></div>
+                                    <span class="text-[8px] font-bold text-slate-400 uppercase tracking-tighter font-black mt-1 opacity-40 font-mono">${s.tot} Monitoring Days</span>
+                                </div>
+                            </td>
+                        `;
+                        auditBody.appendChild(tr);
+                    });
+                }
+            }
+
+            if (logsBody) {
+                logsBody.innerHTML = '';
+                filtered.sort((a,b) => b.dObj - a.dObj).slice(0, 300).forEach(log => {
+                    const tr = document.createElement('tr');
+                    tr.className = "text-slate-800 bg-white hover:bg-slate-50 transition-colors text-slate-800";
+                    tr.innerHTML = `
+                        <td class="px-4 py-4 font-mono font-bold text-[10px] text-slate-400 border-b border-slate-50">${log.date}</td>
+                        <td class="px-4 py-4 font-black border-b border-slate-50 uppercase tracking-tighter text-slate-600">${log.name.split(' ')[0]} <span class="opacity-30 text-[8px]">(${log.id})</span></td>
+                        <td class="px-4 py-4 border-b border-slate-50 font-bold opacity-60 text-indigo-500 italic uppercase font-mono">${log.st}</td>
+                        <td class="px-4 py-4 font-black border-b border-slate-50 text-center ${log.isLate ? 'text-amber-500 font-black' : 'text-slate-900'}">${log.tIn || '-'}</td>
+                        <td class="px-4 py-4 font-black border-b border-slate-50 text-center text-slate-900 font-bold">${log.tOut || '-'}</td>
+                        <td class="px-4 py-4 border-b border-slate-50 text-center"><span class="px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${log.status === 'COMPLETE' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'} font-mono">${log.status}</span></td>
+                    `;
+                    logsBody.appendChild(tr);
+                });
+            }
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        // --- Interface Actions ---
+        function changeViewTab(t) {
+            globalActiveTab = t;
+            document.getElementById('tab-audit').classList.toggle('active', t === 'audit');
+            document.getElementById('tab-logs').classList.toggle('active', t === 'logs');
+            document.getElementById('pane-audit').classList.toggle('hidden', t !== 'audit');
+            document.getElementById('pane-logs').classList.toggle('hidden', t !== 'logs');
+            refreshInterface();
+        }
+
+        function setAuditFilterGroup(f) {
+            globalAuditFilter = f;
+            globalCurrentPage = 1;
+            document.getElementById('btn-all').classList.toggle('active', f === 'All');
+            document.getElementById('btn-missing').classList.toggle('active', f === 'Incomplete');
+            refreshInterface();
+        }
+
+        function moveTablePage(d) {
+            globalCurrentPage += d;
+            if (globalCurrentPage < 1) globalCurrentPage = 1;
+            refreshInterface();
+        }
+
+        // --- App Boot Initialization ---
+        window.onload = function() {
+            document.getElementById('csv-upload').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        globalProcessedData = runMainEngine(ev.target.result);
+                        globalCurrentPage = 1;
+                        document.getElementById('empty-state').classList.add('hidden');
+                        document.getElementById('dashboard-content').classList.remove('hidden');
+                        document.getElementById('status-tag').classList.remove('hidden');
+                        
+                        // Populate Station Dropdown
+                        const stationSel = document.getElementById('filter-station');
+                        if (stationSel) {
+                            const stations = [...new Set(globalProcessedData.map(d => d.st))].filter(Boolean).sort();
+                            stationSel.innerHTML = '<option value="All">All Stations</option>';
+                            stations.forEach(s => {
+                                const opt = document.createElement('option');
+                                opt.value = s; opt.innerText = s;
+                                stationSel.appendChild(opt);
+                            });
+                        }
+
+                        // Auto-set Date Inputs based on data range
+                        const dateObjs = globalProcessedData.map(d => d.dObj).filter(Boolean);
+                        if (dateObjs.length) {
+                            const minD = new Date(Math.min(...dateObjs));
+                            const maxD = new Date(Math.max(...dateObjs));
+                            // Format YYYY-MM-DD for input
+                            const toISO = (d) => new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+                            document.getElementById('filter-start-date').value = toISO(minD);
+                            document.getElementById('filter-end-date').value = toISO(maxD);
+                        }
+                        refreshInterface();
+                    };
+                    reader.readAsText(file);
+                }
+            });
+
+            // Synced all EventListeners to refreshInterface()
+            document.getElementById('filter-search').addEventListener('input', () => { globalCurrentPage = 1; refreshInterface(); });
+            document.getElementById('filter-station').addEventListener('change', () => { globalCurrentPage = 1; refreshInterface(); });
+            document.getElementById('filter-start-date').addEventListener('change', () => { globalCurrentPage = 1; refreshInterface(); });
+            document.getElementById('filter-end-date').addEventListener('change', () => { globalCurrentPage = 1; refreshInterface(); });
+
+            lucide.createIcons();
+        };
+
+        function resetDashboard() { window.location.reload(); }
+    </script>
+</body>
+</html>
